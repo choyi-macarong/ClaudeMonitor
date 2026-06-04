@@ -14,11 +14,13 @@ Claude Code 세션을 모니터링하는 macOS 오버레이 앱.
 - 항상 최상위에 떠있는 오버레이 캐릭터 (모든 Space + 전체화면에서 표시)
 - 세션별 커스텀 GIF 아바타
 - Claude Code 응답 완료 / 권한 요청 시 말풍선 알림 + 사운드
-- 말풍선/캐릭터 클릭 시 해당 세션의 터미널 탭으로 이동
+- 말풍선/캐릭터 클릭 시 해당 세션의 터미널 탭으로 이동 (Claude 데스크톱 앱 세션은 앱 활성화)
 - 드래그로 위치 이동
 - 캐릭터 크기 설정 (Small / Medium / Large)
+- 메인 색상 설정 (9가지 프리셋 색상)
 - 다양한 터미널 지원: iTerm2, Terminal.app, cmux, Warp, Ghostty, Kitty, Alacritty, tmux
-- Settings UI에서 세션/터미널/크기 설정
+- Claude 데스크톱 앱 안에서 실행하는 Claude Code 세션도 지원 (`session_id` 기반 라우팅)
+- Settings UI에서 세션/터미널/크기/색상 설정
 - `/monitor` 슬래시 커맨드로 세션 자동 등록
 
 <img width="560" height="544" alt="Vector" src="https://github.com/user-attachments/assets/21e6186e-7960-4262-99ac-7db9bc8c5a96" />
@@ -105,6 +107,9 @@ swift build -c release
 **iTerm2/Terminal.app 사용 시:**
 처음 클릭할 때 macOS가 자동화 권한을 요청합니다. `System Settings > Privacy & Security > Automation`에서 ClaudeMonitor가 해당 터미널을 제어할 수 있도록 허용하세요.
 
+**Claude 데스크톱 앱에서 Claude Code를 사용하는 경우:**
+이 세션은 제어 터미널(tty)이 없어 자동으로 감지됩니다. 캐릭터를 클릭하면 Claude 데스크톱 앱을 앞으로 가져옵니다(앱이 스크립팅을 제공하지 않아 특정 대화 탭까지 지정하지는 못합니다). 말풍선은 `session_id`로 라우팅되므로, 같은 폴더의 다른 세션과 섞이지 않습니다.
+
 ### 3. 세션 등록
 
 Hook 설정을 완료하면 Claude Code 세션 시작 시 **자동으로 등록**됩니다. 세션 종료 후에는 자동으로 사라집니다.
@@ -124,11 +129,16 @@ GIF 파일은 애니메이션으로 표시됩니다.
 Settings의 **Size** 선택에서 `Small` / `Medium` / `Large` 중 선택할 수 있습니다 (기본값: Small).
 캐릭터 본체, 이름 라벨, 오버레이 창 크기가 함께 스케일됩니다.
 
+### 6. 메인 색상
+
+Settings의 **Color**에서 9가지 프리셋 색상 중 하나를 선택할 수 있습니다 (기본값: Purple).
+캐릭터 테두리, 이름 라벨, 말풍선 테두리 색상에 적용됩니다.
+
 ## Usage
 
 | 동작 | 결과 |
 |------|------|
-| 캐릭터 클릭 | 해당 세션 터미널 활성화 |
+| 캐릭터 클릭 | 해당 세션 터미널 활성화 (Claude 데스크톱 앱 세션은 Claude 앱 활성화) |
 | 말풍선 클릭 | 터미널 활성화 + 말풍선 닫기 |
 | 드래그 | 위치 이동 |
 | 우클릭 / Ctrl+클릭 | 컨텍스트 메뉴 (Settings, New Session, Reset Position, Quit) |
@@ -163,12 +173,15 @@ curl -X POST http://localhost:9877/register \
 {
   "terminal": "iTerm2",
   "characterSize": "Small",
+  "mainColor": "Purple",
   "sessions": [
     {
       "name": "my-project",
       "cwdPattern": "/Users/me/projects/my-project",
       "gifPath": "/Users/me/.claude-monitor/avatars/avatar.gif",
-      "order": 0
+      "order": 0,
+      "tty": "ttys036",
+      "sessionId": "1f385257-62f9-4541-b594-4d095d215c21"
     }
   ]
 }
@@ -176,3 +189,5 @@ curl -X POST http://localhost:9877/register \
 
 - `terminal` 값: `iTerm2`, `Terminal`, `cmux`, `tmux`, `Warp`, `Ghostty`, `Kitty`, `Alacritty`
 - `characterSize` 값: `Small`, `Medium`, `Large`
+- `mainColor` 값: `Red`, `Orange`, `Yellow`, `Green`, `Blue`, `Indigo`, `Purple`, `Black`, `Pink`
+- `tty` / `sessionId`: 세션 자동 등록 시 채워집니다. 말풍선·클릭 라우팅 식별자로, 비어 있으면 cwd로 폴백합니다 (`sessionId`가 가장 우선).
