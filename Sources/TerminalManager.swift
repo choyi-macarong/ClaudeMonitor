@@ -12,6 +12,15 @@ enum TerminalManager {
     static var terminalApp: TerminalApp = .iterm2
 
     static func activate(forPath path: String, tty: String = "") {
+        // Claude Code running inside the Claude desktop app has no controlling
+        // terminal, so claude-tty.sh registers it with an empty tty. Route those
+        // sessions to the Claude desktop app instead of the configured terminal.
+        // The app exposes no scripting, so we can only bring it frontmost (not
+        // focus the exact session tab) — but that beats wrongly raising iTerm2.
+        if tty.isEmpty, activateClaudeDesktop() {
+            return
+        }
+
         if terminalApp == .tmux {
             activateTmuxSession(forPath: path)
             return
@@ -37,6 +46,27 @@ enum TerminalManager {
         default:
             break
         }
+    }
+
+    // MARK: - Claude desktop app
+
+    private static let claudeDesktopBundleID = "com.anthropic.claudefordesktop"
+
+    // Returns false when the desktop app isn't running, so the caller can fall
+    // back to the terminal path (e.g. a legacy session that registered without
+    // a tty but actually lives in a terminal).
+    private static func activateClaudeDesktop() -> Bool {
+        guard NSWorkspace.shared.runningApplications.contains(where: {
+            $0.bundleIdentifier == claudeDesktopBundleID
+        }) else { return false }
+
+        if NSApp.isActive {
+            NSApp.deactivate()
+        }
+        // `open -b` reliably brings the app frontmost on modern macOS, where an
+        // accessory app's NSRunningApplication.activate(options:) is often ignored.
+        shell("/usr/bin/open -b \(claudeDesktopBundleID)")
+        return true
     }
 
     // MARK: - iTerm2

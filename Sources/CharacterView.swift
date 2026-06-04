@@ -81,11 +81,14 @@ class CharacterView: NSView {
         needsDisplay = true
     }
 
-    func showBubble(message: String, sessionPath: String, name: String? = nil, tty: String? = nil) {
-        // Prefer an exact tty match so the bubble lands on the right avatar even
-        // when two sessions share a cwd; fall back to cwd substring matching.
+    func showBubble(message: String, sessionPath: String, name: String? = nil, tty: String? = nil, sessionId: String? = nil) {
+        // Prefer the session id (unique per session even without a tty, e.g. the
+        // Claude desktop app), then an exact tty match (unique per terminal
+        // pane), then cwd substring matching as a last resort.
         let matched: SessionConfig?
-        if let tty, !tty.isEmpty, let s = sessions.first(where: { $0.tty == tty }) {
+        if let sessionId, !sessionId.isEmpty, let s = sessions.first(where: { $0.sessionId == sessionId }) {
+            matched = s
+        } else if let tty, !tty.isEmpty, let s = sessions.first(where: { $0.tty == tty }) {
             matched = s
         } else {
             matched = sessions.first { !$0.cwdPattern.isEmpty && sessionPath.contains($0.cwdPattern) }

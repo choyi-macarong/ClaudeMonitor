@@ -13,17 +13,18 @@ struct SessionNotification {
     let message: String
     let name: String?
     let tty: String?
+    let sessionId: String?
 }
 
 class NotificationServer {
 
     private let listener: NWListener
     private let onNotify: (SessionNotification) -> Void
-    private let onRegister: (String, String, String, Bool, String) -> Void // name, cwd, gifPath, isAuto, tty
+    private let onRegister: (String, String, String, Bool, String, String) -> Void // name, cwd, gifPath, isAuto, tty, sessionId
 
     init(port: UInt16,
          onNotify: @escaping (SessionNotification) -> Void,
-         onRegister: @escaping (String, String, String, Bool, String) -> Void)
+         onRegister: @escaping (String, String, String, Bool, String, String) -> Void)
     {
         self.onNotify = onNotify
         self.onRegister = onRegister
@@ -97,12 +98,13 @@ class NotificationServer {
             let gifPath = json["gifPath"] as? String ?? ""
             let isAuto = json["isAuto"] as? Bool ?? false
             let tty = json["tty"] as? String ?? ""
+            let sessionId = json["sessionId"] as? String ?? ""
             guard !cwd.isEmpty else {
                 return ("{\"error\":\"cwd required\"}", nil)
             }
             let safeName = name.replacingOccurrences(of: "\"", with: "'")
             return ("{\"status\":\"registered\",\"name\":\"\(safeName)\"}", {
-                self.onRegister(name, cwd, gifPath, isAuto, tty)
+                self.onRegister(name, cwd, gifPath, isAuto, tty, sessionId)
             })
 
         default:
@@ -118,6 +120,7 @@ class NotificationServer {
             ?? (tool.isEmpty ? project : "\(project): \(tool)")
         let name = json["name"] as? String
         let tty = json["tty"] as? String
-        return SessionNotification(sessionPath: sessionPath, message: message, name: name, tty: tty)
+        let sessionId = json["sessionId"] as? String
+        return SessionNotification(sessionPath: sessionPath, message: message, name: name, tty: tty, sessionId: sessionId)
     }
 }

@@ -118,25 +118,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self?.handleNotification(notification)
                 }
             },
-            onRegister: { [weak self] name, cwd, gifPath, isAuto, tty in
+            onRegister: { [weak self] name, cwd, gifPath, isAuto, tty, sessionId in
                 DispatchQueue.main.async {
-                    self?.registerSession(name: name, cwd: cwd, gifPath: gifPath, isAuto: isAuto, tty: tty)
+                    self?.registerSession(name: name, cwd: cwd, gifPath: gifPath, isAuto: isAuto, tty: tty, sessionId: sessionId)
                 }
             }
         )
     }
 
-    private func registerSession(name: String, cwd: String, gifPath: String, isAuto: Bool, tty: String) {
-        // Identity is the tty when we have one (unique per pane); otherwise fall
-        // back to cwd. A legacy session (empty tty) gets adopted by the first
-        // tty-bearing registration for the same cwd; a second session in that
-        // same cwd then no longer matches and becomes its own avatar.
+    private func registerSession(name: String, cwd: String, gifPath: String, isAuto: Bool, tty: String, sessionId: String) {
+        // Identity is the session id when we have one (unique per session even
+        // without a controlling tty, e.g. the Claude desktop app); then tty
+        // (unique per terminal pane); otherwise fall back to cwd. A legacy
+        // session (no id, no tty) gets adopted by the first matching cwd.
         let idx = configStore.sessions.firstIndex {
-            (!tty.isEmpty && $0.tty == tty) ||
-            ($0.tty.isEmpty && $0.cwdPattern.caseInsensitiveCompare(cwd) == .orderedSame)
+            if !sessionId.isEmpty { return $0.sessionId == sessionId }
+            if !tty.isEmpty { return $0.tty == tty }
+            return $0.sessionId.isEmpty && $0.tty.isEmpty &&
+                $0.cwdPattern.caseInsensitiveCompare(cwd) == .orderedSame
         }
         if let idx {
             var changed = false
+            if !sessionId.isEmpty && configStore.sessions[idx].sessionId != sessionId {
+                configStore.sessions[idx].sessionId = sessionId
+                changed = true
+            }
             if !tty.isEmpty && configStore.sessions[idx].tty != tty {
                 configStore.sessions[idx].tty = tty
                 changed = true
@@ -158,7 +164,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             cwdPattern: cwd,
             order: configStore.sessions.count,
             isAuto: isAuto,
-            tty: tty
+            tty: tty,
+            sessionId: sessionId
         )
         if !gifPath.isEmpty { session.gifPath = gifPath }
         configStore.sessions.append(session)
@@ -173,7 +180,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             message: notification.message,
             sessionPath: notification.sessionPath,
             name: notification.name,
-            tty: notification.tty
+            tty: notification.tty,
+            sessionId: notification.sessionId
         )
         NSSound(named: NSSound.Name("Pop"))?.play()
     }

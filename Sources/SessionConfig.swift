@@ -114,8 +114,13 @@ struct SessionConfig: Codable, Identifiable {
     // per terminal pane, so it disambiguates two sessions in the same cwd. Empty
     // for sessions registered by an older client — falls back to cwd matching.
     var tty: String
+    // Claude Code session id — unique per session regardless of how it's hosted,
+    // so it routes bubbles correctly even when there's no controlling tty (e.g.
+    // Claude Code running inside the Claude desktop app). Empty for sessions
+    // registered by an older client.
+    var sessionId: String
 
-    init(name: String = "New Session", gifPath: String = "", cwdPattern: String = "", order: Int = 0, isAuto: Bool = false, tty: String = "") {
+    init(name: String = "New Session", gifPath: String = "", cwdPattern: String = "", order: Int = 0, isAuto: Bool = false, tty: String = "", sessionId: String = "") {
         self.id = UUID()
         self.name = name
         self.gifPath = gifPath
@@ -123,10 +128,11 @@ struct SessionConfig: Codable, Identifiable {
         self.order = order
         self.isAuto = isAuto
         self.tty = tty
+        self.sessionId = sessionId
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, gifPath, cwdPattern, order, isAuto, tty
+        case id, name, gifPath, cwdPattern, order, isAuto, tty, sessionId
     }
 
     init(from decoder: Decoder) throws {
@@ -138,6 +144,7 @@ struct SessionConfig: Codable, Identifiable {
         order = try c.decode(Int.self, forKey: .order)
         isAuto = try c.decodeIfPresent(Bool.self, forKey: .isAuto) ?? false
         tty = try c.decodeIfPresent(String.self, forKey: .tty) ?? ""
+        sessionId = try c.decodeIfPresent(String.self, forKey: .sessionId) ?? ""
     }
 }
 
