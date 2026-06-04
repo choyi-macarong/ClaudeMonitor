@@ -112,8 +112,10 @@ def wait_for_new_message(transcript_path: str, previous: str) -> str:
     return baseline
 
 
-def send_notification(cwd: str, message: str, tty: str = "") -> None:
-    payload = json.dumps({"cwd": cwd, "message": message, "tty": tty}).encode("utf-8")
+def send_notification(cwd: str, message: str, tty: str = "", session_id: str = "") -> None:
+    payload = json.dumps(
+        {"cwd": cwd, "message": message, "tty": tty, "sessionId": session_id}
+    ).encode("utf-8")
     req = urllib.request.Request(
         "http://localhost:9877/notify",
         data=payload,
@@ -133,7 +135,7 @@ def do_work(data: dict) -> None:
 
     if event == "Notification":
         message = (data.get("message") or "").strip() or "done"
-        send_notification(cwd, message, tty)
+        send_notification(cwd, message, tty, session_id)
         return
 
     cache_file = cache_path_for(session_id)
@@ -142,7 +144,7 @@ def do_work(data: dict) -> None:
     if latest:
         write_previous(cache_file, latest)
     message = truncate(latest) or "done"
-    send_notification(cwd, message, tty)
+    send_notification(cwd, message, tty, session_id)
 
 
 def main():
